@@ -21,14 +21,43 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #include <DFRobot_HX711_I2C.h>
 //DFRobot_HX711_I2C MyScale(&Wire,/*addr=*/0x64);
 DFRobot_HX711_I2C MyScale;
+/* Tic Stepper Controller library */
+#include <Tic.h>
+TicI2C tic;
+//-----------------------------------------------------------------------------------------//
 
 float Weight = 0;
+int targetPosition = 0;
+int targetVelocity - 0;
 int menu_flag = 0;
+bool selectPositionFlag = false;
+bool selectVelocityFlag = false;
+bool startTestFlag = false;
 int button = 7;
 
-void setup() {
 
-  // Displa
+void setup() {
+  // Set up I2C
+  Wire.begin();
+  // *** Tic controller setup *** //
+
+  // select what type of Tic is used
+  tic.setProduct(TicProduct::T825);
+  // select microstepping mode and resolution 
+  tic.setStepMode(TicStepMode::Microstep8); 
+  // Set the Tic's current position to 0, so that when we command
+  // it to move later, it will move a predictable amount.
+  tic.haltAndSetPosition(0);
+  // Tells the Tic that it is OK to start driving the motor.  The
+  // Tic's safe-start feature helps avoid unexpected, accidental
+  // movement of the motor: if an error happens, the Tic will not
+  // drive the motor again until it receives the Exit Safe Start
+  // command.  The safe-start feature can be disbled in the Tic
+  // Control Center.
+  tic.exitSafeStart();
+
+
+  // Display
   Serial.begin(9600);
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -57,6 +86,72 @@ void setup() {
   Serial.println(MyScale.getCalibration());
   MyScale.setCalibration(MyScale.getCalibration());
   delay(1000);
+}
+
+void loop() {
+  // Display welcome message
+  initial_message();
+  main_menu_message();
+  // Display a message to input desired displacement
+  delay(4000);
+  // Display a message to input desired speed
+
+  // Displacement selection case
+  if(selectPositionFlag == true){
+    // Display: "Select desired displacement"
+    while(Serial.available() > 0){
+      targetPosition = Serial.parseInt();
+      selectPositionFlag = false;
+      selectSpeed = true;
+    }
+  }
+  // Speed selection case
+  if(selectVelocityFlag == true){
+    // Display: "Select desired speed"
+    while(Serial.available() > 0){
+    targetVelocity = Serial.parseInt();
+    selectVelocityFlag = false;
+    startTestFlag = true;
+    }
+  }
+  // Test execution case
+  
+  while (startTestFlag == true){
+    tic.setTargetVelocity(targetVelocity);
+    tic.setTargetPosition(targetPosition);
+    // Wait until the motor reches it's position, while displaying current position, speed and force
+    
+
+  }
+ 
+ /*
+  Weight = MyScale.readWeight();
+  while (Weight < 300) {
+    Weight = MyScale.readWeight();
+    display.clearDisplay();
+    display.setTextSize(1);               // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);  // Draw white text
+    display.setCursor(0, 0);              // Start at top-left corner
+    display.println(Weight, DEC);;
+    display.display();
+  }
+  */
+  delay(8000);
+  test_end_message();
+  delay(4000);
+  /*
+  while (menu_flag == 0){
+  //wait for the button to be pressed
+    if(button == true){
+    menu_flag = 1;
+    perform_actuator_test();
+    // wait until actuator is not moving
+    // display "finished"
+    // menu_flag = 0;
+    // main_menu_message();
+    }  
+  }
+  */
 }
 
 void initial_message() {
@@ -95,39 +190,4 @@ void test_end_message() {
   display.println(F("finished"));
   display.display();
   // Move to the X at X speed
-}
-
-
-void loop() {
-  // Display welcome message
-  initial_message();
-  main_menu_message();
-  delay(4000);
-  perform_actuator_test();
-  Weight = MyScale.readWeight();
-  while (Weight < 300) {
-    Weight = MyScale.readWeight();
-    display.clearDisplay();
-    display.setTextSize(1);               // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);  // Draw white text
-    display.setCursor(0, 0);              // Start at top-left corner
-    display.println(Weight, DEC);;
-    display.display();
-  }
-  delay(8000);
-  test_end_message();
-  delay(4000);
-  /*
-  while (menu_flag == 0){
-  //wait for the button to be pressed
-    if(button == true){
-    menu_flag = 1;
-    perform_actuator_test();
-    // wait until actuator is not moving
-    // display "finished"
-    // menu_flag = 0;
-    // main_menu_message();
-    }  
-  }
-  */
 }
