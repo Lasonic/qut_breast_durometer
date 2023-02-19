@@ -27,12 +27,15 @@ TicI2C tic;
 //-----------------------------------------------------------------------------------------//
 
 float Weight = 0;
-int targetPosition = 0;
-int targetVelocity - 0;
+int32_t targetPosition = 0;
+int32_t targetVelocity = 0;
 int menu_flag = 0;
-bool selectPositionFlag = false;
+bool selectPositionFlag = true;
 bool selectVelocityFlag = false;
 bool startTestFlag = false;
+bool inProgress = false;
+bool positionSerialMessage = true;
+bool velocitySerialMessage = false;
 int button = 7;
 
 
@@ -40,11 +43,12 @@ void setup() {
   // Set up I2C
   Wire.begin();
   // *** Tic controller setup *** //
-
+  // Give the Tic some time to start up.
+  delay(20);
   // select what type of Tic is used
-  tic.setProduct(TicProduct::T825);
+  //tic.setProduct(TicProduct::T825);
   // select microstepping mode and resolution 
-  tic.setStepMode(TicStepMode::Microstep8); 
+  //tic.setStepMode(TicStepMode::Microstep8); 
   // Set the Tic's current position to 0, so that when we command
   // it to move later, it will move a predictable amount.
   tic.haltAndSetPosition(0);
@@ -90,40 +94,62 @@ void setup() {
 
 void loop() {
   // Display welcome message
-  initial_message();
-  main_menu_message();
-  // Display a message to input desired displacement
-  delay(4000);
+  //initial_message();
+  //main_menu_message();
+  //delay(2000);
   // Display a message to input desired speed
 
   // Displacement selection case
   if(selectPositionFlag == true){
-    // Display: "Select desired displacement"
+    if(positionSerialMessage == true){
+      Serial.println("Select desired displacement: ");
+      positionSerialMessage = false;
+      velocitySerialMessage = true;
+      // Display a message to input desired displacement
+    }
     while(Serial.available() > 0){
       targetPosition = Serial.parseInt();
+      targetPosition = 500;
+      Serial.println(targetPosition);
       selectPositionFlag = false;
-      selectSpeed = true;
+      selectVelocityFlag = true;
     }
+    
   }
   // Speed selection case
   if(selectVelocityFlag == true){
-    // Display: "Select desired speed"
+    if(velocitySerialMessage == true){
+      Serial.println("Select desired velocity: ");
+      velocitySerialMessage = false;
+      // Display a message to input desired velocity
+    }
     while(Serial.available() > 0){
     targetVelocity = Serial.parseInt();
+    targetVelocity = 180000;
+    Serial.println(targetVelocity);
     selectVelocityFlag = false;
     startTestFlag = true;
+    inProgress = true;
     }
   }
   // Test execution case
   
-  while (startTestFlag == true){
-    tic.setTargetVelocity(targetVelocity);
-    tic.setTargetPosition(targetPosition);
-    // Wait until the motor reches it's position, while displaying current position, speed and force
-    
 
+  if(inProgress == true){
+      if(startTestFlag == true){
+      Serial.println("Motor setup");
+      //tic.setTargetVelocity(targetVelocity);
+      startTestFlag = false;
+      // Wait until the motor reches it's position, while displaying current position, speed and force
+    }
+    Serial.println("In progress");
+    //display.clearDisplay();
+    //display.setCursor(0, 0);
+    tic.setTargetPosition(100);
+    waitForPosition(100);
   }
- 
+
+
  /*
   Weight = MyScale.readWeight();
   while (Weight < 300) {
@@ -136,9 +162,9 @@ void loop() {
     display.display();
   }
   */
-  delay(8000);
-  test_end_message();
-  delay(4000);
+  //delay(8000);
+  //test_end_message();
+  //delay(4000);
   /*
   while (menu_flag == 0){
   //wait for the button to be pressed
@@ -190,4 +216,15 @@ void test_end_message() {
   display.println(F("finished"));
   display.display();
   // Move to the X at X speed
+}
+void waitForPosition(int32_t targetPosition)
+{
+  do
+  {
+    resetCommandTimeout();
+  } while (tic.getCurrentPosition() != targetPosition);
+}
+void resetCommandTimeout()
+{
+  tic.resetCommandTimeout();
 }
