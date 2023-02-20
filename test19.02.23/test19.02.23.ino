@@ -26,7 +26,7 @@ DFRobot_HX711_I2C MyScale;
 #include <Tic.h>
 
 TicI2C tic;
-
+//---------------------------------Define variables---------------------------------------------//
 float Weight = 0;
 int targetPosition = 200;
 int targetVelocity = 0;
@@ -55,7 +55,6 @@ void setup()
   // the library initializes this with an Adafruit splash screen.
   display.display();
   delay(2000);  // Pause for 2 seconds
-
   // Clear the buffer
   display.clearDisplay();
   while (!MyScale.begin()) {
@@ -64,7 +63,6 @@ void setup()
   }
   // Set up I2C.
   Wire.begin();
-
   // Give the Tic some time to start up.
   delay(20);
 
@@ -94,20 +92,21 @@ void resetCommandTimeout()
 // Delays for the specified number of milliseconds while
 // resetting the Tic's command timeout so that its movement does
 // not get interrupted by errors.
-void delayWhileResettingCommandTimeout(uint32_t ms)
+/*void delayWhileResettingCommandTimeout(uint32_t ms)
 {
   uint32_t start = millis();
   do
   {
-    display.clearDisplay();
-    display.setTextSize(1);               // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);  // Draw white text
-    display.setCursor(0, 0);              // Start at top-left corner
-    display.println(tic.getCurrentPosition(), DEC);;
-    display.display();
-    resetCommandTimeout();
-  } while ((uint32_t)(millis() - start) <= ms);
+    display.clearDisplay();                           // Clear display
+    display.setTextSize(1);                           // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);              // Draw white text
+    display.setCursor(0, 0);                          // Start at top-left corner
+    display.println(tic.getCurrentPosition(), DEC);;  // Get current stepper position (step count)
+    display.display();                                // Display
+    resetCommandTimeout();                            
+  } while ((uint32_t)(millis() - start) <= ms);       // 
 }
+*/
 
 // Polls the Tic, waiting for it to reach the specified target
 // position.  Note that if the Tic detects an error, the Tic will
@@ -119,14 +118,6 @@ void waitForPosition(int32_t targetPosition)
   displayCurrentPosFlag = true;
   do
   {
-    if (displayCurrentPosFlag == true){
-      display.setTextSize(1);               // Normal 1:1 pixel scale
-      display.setTextColor(SSD1306_WHITE);  // Draw white text
-      display.clearDisplay();
-      display.setCursor(0, 0);
-      display.print("Current position:");
-      displayCurrentPosFlag = false;
-    }
     display.clearDisplay();
     display.setCursor(0, 0);
     display.print("Current position and speed:");
@@ -142,11 +133,13 @@ void waitForPosition(int32_t targetPosition)
 
 void loop()
 {
+  // Tell the Tic to move to targetPosition , and wait until it gets
+  // there.
   tic.setTargetPosition(targetPosition);
   waitForPosition(targetPosition);
-
-  // Tell the Tic to move to position -100, and delay for 3000 ms
-  // to give it time to get there.
+  
+  // Tell the Tic to move to -targetPosition , and wait until it gets
+  // there.
   tic.setTargetPosition(-targetPosition);
   waitForPosition(-targetPosition);
 }
