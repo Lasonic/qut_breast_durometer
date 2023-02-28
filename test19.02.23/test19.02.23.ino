@@ -26,9 +26,9 @@ DFRobot_HX711_I2C MyScale;
 #include <Tic.h>
 
 TicI2C tic;
-//---------------------------------Define variables---------------------------------------------//
+
 float Weight = 0;
-int targetPosition = 200;
+int targetPosition = 2000;
 int targetVelocity = 0;
 int menu_flag = 0;
 bool selectPositionFlag = true;
@@ -55,14 +55,27 @@ void setup()
   // the library initializes this with an Adafruit splash screen.
   display.display();
   delay(2000);  // Pause for 2 seconds
+
   // Clear the buffer
   display.clearDisplay();
   while (!MyScale.begin()) {
     Serial.println("The initialization of the chip is failed, please confirm whether the chip connection is correct");
     delay(1000);
   }
+  //// Set the calibration weight when the weight sensor module is automatically calibrated (g)
+  MyScale.setCalWeight(100);
+  // Set the trigger threshold (G) for automatic calibration of the weight sensor module. When only the weight of the object on the scale is greater than this value, the module will start the calibration process
+  // This value cannot be greater than the calibration weight of the setCalWeight() setting
+  MyScale.setThreshold(30);
+  // Obtain the calibration value. The accurate calibration value can be obtained after the calibration operation is completed
+  Serial.print("the calibration value of the sensor is: ");
+  Serial.println(MyScale.getCalibration());
+  MyScale.setCalibration(MyScale.getCalibration());
+  delay(1000);
+
   // Set up I2C.
   Wire.begin();
+
   // Give the Tic some time to start up.
   delay(20);
 
@@ -76,7 +89,16 @@ void setup()
   // drive the motor again until it receives the Exit Safe Start
   // command.  The safe-start feature can be disbled in the Tic
   // Control Center.
+
   tic.exitSafeStart();
+  tic.setStepMode(TicStepMode::Full);
+  if (tic.getStepMode() == TicStepMode::Full)
+{
+  // The Tic is currently using 1/8 microsteps.
+  Serial.print("MICROSTEP");
+}
+
+  // CHECK MICROSTEP
 }
 
 // Sends a "Reset command timeout" command to the Tic.  We must
@@ -89,22 +111,23 @@ void resetCommandTimeout()
   tic.resetCommandTimeout();
 }
 
+/*
 // Delays for the specified number of milliseconds while
 // resetting the Tic's command timeout so that its movement does
 // not get interrupted by errors.
-/*void delayWhileResettingCommandTimeout(uint32_t ms)
+void delayWhileResettingCommandTimeout(uint32_t ms)
 {
   uint32_t start = millis();
   do
   {
-    display.clearDisplay();                           // Clear display
-    display.setTextSize(1);                           // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);              // Draw white text
-    display.setCursor(0, 0);                          // Start at top-left corner
-    display.println(tic.getCurrentPosition(), DEC);;  // Get current stepper position (step count)
-    display.display();                                // Display
-    resetCommandTimeout();                            
-  } while ((uint32_t)(millis() - start) <= ms);       // 
+    display.clearDisplay();
+    display.setTextSize(1);                     // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);        // Draw white text
+    display.setCursor(0, 0);                    // Start at top-left corner
+    display.println(tic.getCurrentPosition(), DEC);;
+    display.display();
+    resetCommandTimeout();
+  } while ((uint32_t)(millis() - start) <= ms);
 }
 */
 
@@ -118,28 +141,42 @@ void waitForPosition(int32_t targetPosition)
   displayCurrentPosFlag = true;
   do
   {
+    /*
+    if (displayCurrentPosFlag == true){
+      display.setTextSize(1);               // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.print("Current position:");
+      displayCurrentPosFlag = false;
+    }
+    */
+    display.setTextSize(1);               // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);  // Draw white text
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.print("Current position and speed:");
+    display.print("Current position,speed,weight:");
     display.setCursor(0, 20);  
-    display.print(tic.getCurrentPosition(), DEC);;
+    display.print(tic.getCurrentPosition()*0.0018, DEC);;
     display.setCursor(0, 30);
-    display.print(tic.getCurrentVelocity(), DEC);;  
+    display.print(tic.getCurrentVelocity()*0.0018/10000, DEC);;
+    Serial.println(tic.getCurrentPosition()*0.0018);
+    display.setCursor(0, 40);
+    display.print(MyScale.readWeight(), DEC);; 
     display.display();
-    delay(50);
+    delay(10);
     resetCommandTimeout();    
   } while (tic.getCurrentPosition() != targetPosition);
 }
 
 void loop()
 {
-  // Tell the Tic to move to targetPosition , and wait until it gets
-  // there.
+
   tic.setTargetPosition(targetPosition);
   waitForPosition(targetPosition);
-  
-  // Tell the Tic to move to -targetPosition , and wait until it gets
-  // there.
-  tic.setTargetPosition(-targetPosition);
-  waitForPosition(-targetPosition);
+
+  // Tell the Tic to move to position -100, and delay for 3000 ms
+  // to give it time to get there.
+  tic.setTargetPosition(0);
+  waitForPosition(0);
 }
