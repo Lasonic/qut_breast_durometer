@@ -28,12 +28,13 @@ DFRobot_HX711_I2C MyScale;
 TicI2C tic;
 
 float Weight = 0;
-int targetPosition = 2000;
-int targetVelocity = 0;
+// targetPosition in steps. For full step, 1 step = 0.0018mm
+int32_t targetPosition = 4000; 
+uint32_t speed = 1000000;
 int menu_flag = 0;
 bool selectPositionFlag = true;
 bool selectVelocityFlag = false;
-bool startTestFlag = false;
+bool startTestFlag = true;
 bool inProgress = false;
 bool positionSerialMessage = true;
 bool velocitySerialMessage = false;
@@ -81,6 +82,8 @@ void setup()
 
   // Set the Tic's current position to 0, so that when we command
   // it to move later, it will move a predictable amount.
+
+  tic.setMaxSpeed(speed);
   tic.haltAndSetPosition(0);
 
   // Tells the Tic that it is OK to start driving the motor.  The
@@ -89,16 +92,9 @@ void setup()
   // drive the motor again until it receives the Exit Safe Start
   // command.  The safe-start feature can be disbled in the Tic
   // Control Center.
-
-  tic.exitSafeStart();
   tic.setStepMode(TicStepMode::Full);
-  if (tic.getStepMode() == TicStepMode::Full)
-{
-  // The Tic is currently using 1/8 microsteps.
-  Serial.print("MICROSTEP");
-}
-
-  // CHECK MICROSTEP
+  tic.exitSafeStart();
+  
 }
 
 // Sends a "Reset command timeout" command to the Tic.  We must
@@ -155,15 +151,29 @@ void waitForPosition(int32_t targetPosition)
     display.setTextColor(SSD1306_WHITE);  // Draw white text
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.print("Current position,speed,weight:");
-    display.setCursor(0, 20);  
-    display.print(tic.getCurrentPosition()*0.0018, DEC);;
+    display.print("weight,vel,pos:");
+    display.setCursor(0, 20);
+    // Display values on the serial monitor
+    // Convert weight to N
+    display.print(MyScale.readWeight()*0.00981, DEC);; 
     display.setCursor(0, 30);
+    // Default velocity: steps per 10000 seconds
+    // Convert to mm/s
     display.print(tic.getCurrentVelocity()*0.0018/10000, DEC);;
-    Serial.println(tic.getCurrentPosition()*0.0018);
+    // Actuonix P8 stepper - 0.0018mm per step
+    // Convert to display mm 
     display.setCursor(0, 40);
-    display.print(MyScale.readWeight(), DEC);; 
+    display.print(tic.getCurrentPosition()*0.0018, DEC);;
     display.display();
+    // Serial display
+    // TIME,WEIGHT,SPEED,POSITION
+    Serial.print(millis());
+    Serial.print(",");
+    Serial.print(MyScale.readWeight()*0.00981);
+    Serial.print(",");
+    Serial.print(tic.getCurrentVelocity()*0.0018/10000);
+    Serial.print(",");
+    Serial.println(tic.getCurrentPosition()*0.0018);
     delay(10);
     resetCommandTimeout();    
   } while (tic.getCurrentPosition() != targetPosition);
@@ -171,12 +181,14 @@ void waitForPosition(int32_t targetPosition)
 
 void loop()
 {
-
-  tic.setTargetPosition(targetPosition);
-  waitForPosition(targetPosition);
+  if(startTestFlag == true){
+  tic.setTargetPosition(-targetPosition);
+  waitForPosition(-targetPosition);
 
   // Tell the Tic to move to position -100, and delay for 3000 ms
   // to give it time to get there.
-  tic.setTargetPosition(0);
-  waitForPosition(0);
+  //tic.setTargetPosition(0);
+  //waitForPosition(0);
+  startTestFlag = false;
+  }
 }
